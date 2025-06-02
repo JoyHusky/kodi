@@ -292,17 +292,17 @@ class HdrezkaTV:
                 set_item_subtitles(item, subtitles)
                 xbmcplugin.addDirectoryItem(self.handle, item_uri, item, False)
 
-    def select_translator(self, content, tv_show, post_id, url, idt, action):
+    def select_translator(self, content, el_name, tv_show, post_id, url, idt, action):
         try:
             div = common.parseDOM(content, 'ul', attrs={'id': 'translators-list'})[0]
         except Exception as ex:
             log(f'select_translator fault parse dom ex: {ex}')
             return tv_show, idt, None
-        titles = common.parseDOM(div, 'li', ret='title')
-        ids = common.parseDOM(div, 'li', ret="data-translator_id")
+        titles = common.parseDOM(div, el_name, ret='title')
+        ids = common.parseDOM(div, el_name, ret="data-translator_id")
 
         # transform flag image into title suffix
-        title_items = common.parseDOM(div, 'li')
+        title_items = common.parseDOM(div, el_name)
         for index, title in enumerate(title_items):
             images = common.parseDOM(title, 'img', ret='title')
             for img in images:
@@ -322,7 +322,7 @@ class HdrezkaTV:
             "translator_id": idt,
             "action": action
         }
-        is_director = common.parseDOM(div, 'li', ret='data-director')
+        is_director = common.parseDOM(div, el_name, ret='data-director')
         if is_director:
             data['is_director'] = is_director[index_]
 
@@ -352,10 +352,19 @@ class HdrezkaTV:
         title = common.parseDOM(content, "h1")[0]
         post_id = common.parseDOM(response.text, "input", attrs={"id": "post_id"}, ret="value")[0]
         idt = "0"
+        el_name = "li"
         try:
             idt = common.parseDOM(
                 content,
-                "li",
+                el_name,
+                attrs={"class": "b-translator__item active"},
+                ret="data-translator_id"
+            )[0]
+        except IndexError:
+            el_name = "a"
+            idt = common.parseDOM(
+                content,
+                el_name,
                 attrs={"class": "b-translator__item active"},
                 ret="data-translator_id"
             )[0]
@@ -370,7 +379,7 @@ class HdrezkaTV:
         tv_show = common.parseDOM(response.text, "div", attrs={"id": "simple-episodes-tabs"})
         if tv_show:
             if self.translator == "select":
-                tv_show, idt, subtitles = self.select_translator(content, tv_show, post_id, uri, idt, "get_episodes")
+                tv_show, idt, subtitles = self.select_translator(content, el_name, tv_show, post_id, uri, idt, "get_episodes")
             titles = common.parseDOM(tv_show, "li")
             ids = common.parseDOM(tv_show, "li", ret='data-id')
             seasons = common.parseDOM(tv_show, "li", ret='data-season_id')
@@ -399,7 +408,7 @@ class HdrezkaTV:
         else:
             content = [response.text]
             if self.translator == "select":
-                content, idt, subtitles = self.select_translator(content[0], content, post_id, uri, idt, "get_movie")
+                content, idt, subtitles = self.select_translator(content[0], el_name, content, post_id, uri, idt, "get_movie")
                 if subtitles is None:
                     # when action == get_movie, None is returned only when some exception occurs,
                     # so we set the streams_block to default
